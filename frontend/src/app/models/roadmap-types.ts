@@ -11,3 +11,23 @@ export interface RefineRequest {
 export interface RoadmapResponse {
     topics: string[];
 }
+
+export interface User {
+    id: number;
+    email: string;
+}
+
+export interface Topic {
+    id: string;
+    roadmapId: string;
+    content: string;
+    orderIndex: number;
+}
+
+export interface Roadmap {
+    id: string;
+    title: string;
+    createdAt: string;
+    assignedToUserId?: number;
+    topics: Topic[];
+}

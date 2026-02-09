@@ -125,5 +125,39 @@ Do not include any markdown formatting.
 
             return Ok(roadmap);
         }
+
+        [HttpPut("{id}/assign")]
+        public async Task<IActionResult> AssignRoadmap(Guid id, [FromBody] AssignRoadmapRequest request)
+        {
+            var roadmap = await _context.Roadmaps.FindAsync(id);
+            if (roadmap == null)
+                return NotFound();
+
+            roadmap.AssignedToUserId = request.UserId;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Roadmap assigned successfully" });
+        }
+
+        [HttpGet("assigned/{userId}")]
+        public async Task<IActionResult> GetAssignedRoadmaps(int userId)
+        {
+            var roadmaps = await _context.Roadmaps
+                .Include(r => r.Topics)
+                .Where(r => r.AssignedToUserId == userId)
+                .ToListAsync();
+
+            foreach (var roadmap in roadmaps)
+            {
+                roadmap.Topics = roadmap.Topics.OrderBy(t => t.OrderIndex).ToList();
+            }
+
+            return Ok(roadmaps);
+        }
+    }
+
+    public class AssignRoadmapRequest
+    {
+        public int? UserId { get; set; }
     }
 }

@@ -19,7 +19,7 @@ builder.Services.AddDbContext<RoadmapContext>(options =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngularDev",
-        policy => policy.WithOrigins("http://localhost:4200")
+        policy => policy.AllowAnyOrigin()
                         .AllowAnyMethod()
                         .AllowAnyHeader());
 });
@@ -29,27 +29,24 @@ var groqModelId = builder.Configuration["Groq:ModelId"];
 var groqApiKey = builder.Configuration["Groq:ApiKey"];
 var groqEndpoint = builder.Configuration["Groq:Endpoint"];
 
-if (!string.IsNullOrWhiteSpace(groqApiKey))
+try
 {
-    builder.Services.AddKernel();
+    if (!string.IsNullOrWhiteSpace(groqApiKey) && !string.IsNullOrWhiteSpace(groqEndpoint))
+    {
+        builder.Services.AddKernel();
 
-    builder.Services.AddOpenAIChatCompletion(
-        modelId: groqModelId,
-        apiKey: groqApiKey,
-        endpoint: new Uri(groqEndpoint)
-    );
+        builder.Services.AddOpenAIChatCompletion(
+            modelId: groqModelId!,
+            apiKey: groqApiKey,
+            endpoint: new Uri(groqEndpoint)
+        );
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Warning: Failed to initialize Semantic Kernel: {ex.Message}");
 }
 
-if (!string.IsNullOrWhiteSpace(groqApiKey))
-{
-    builder.Services.AddKernel();
-
-   builder.Services.AddOpenAIChatCompletion(
-      modelId: groqModelId,
-      apiKey : groqApiKey,
-      endpoint : new Uri(groqEndpoint)
-    );
-}
 
 
 
@@ -62,8 +59,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
 app.UseCors("AllowAngularDev");
+app.UseHttpsRedirection();
 app.MapControllers();
+
+// Ensure Database is Created
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<RoadmapContext>();
+    context.Database.EnsureCreated();
+}
 
 app.Run();

@@ -10,5 +10,6 @@ namespace RoadmapGenerator.API.Data
 
         public DbSet<Roadmap> Roadmaps { get; set; }
         public DbSet<Topic> Topics { get; set; }
+        public DbSet<User> Users { get; set; }
     }
 }
