@@ -14,6 +14,7 @@ namespace RoadmapGenerator.API.Models
 
     public class RoadmapResponse
     {
+        public string Title { get; set; } = string.Empty;
         public List<string> Topics { get; set; } = new();
     }
 }
