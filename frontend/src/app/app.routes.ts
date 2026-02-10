@@ -9,6 +9,6 @@ export const routes: Routes = [
     { path: '', redirectTo: 'login', pathMatch: 'full' },
     { path: 'generate-roadmap', component: LandingPageComponent, canActivate: [authGuard] },
     { path: 'login', component: LoginComponent },
-    { path: 'my-progress', component: EmployeeRoadmapComponent, canActivate: [authGuard] },
+    { path: 'progress', component: EmployeeRoadmapComponent, canActivate: [authGuard] },
     { path: 'roadmap/:id', component: RoadmapViewComponent, canActivate: [authGuard] }
 ];

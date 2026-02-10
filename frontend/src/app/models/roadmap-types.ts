@@ -9,12 +9,14 @@ export interface RefineRequest {
 }
 
 export interface RoadmapResponse {
+    title: string;
     topics: string[];
 }
 
 export interface User {
     id: number;
     email: string;
+    role: string;
 }
 
 export interface Topic {
@@ -22,6 +24,7 @@ export interface Topic {
     roadmapId: string;
     content: string;
     orderIndex: number;
+    isCompleted: boolean;
 }
 
 export interface Roadmap {
@@ -29,5 +32,6 @@ export interface Roadmap {
     title: string;
     createdAt: string;
     assignedToUserId?: number;
+    assignedToUser?: User;
     topics: Topic[];
 }

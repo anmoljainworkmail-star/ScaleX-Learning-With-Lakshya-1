@@ -58,7 +58,7 @@ export class LoginComponent {
         if (user.role === 'Manager') {
           this.router.navigate(['/generate-roadmap']); // Roadmap Generator
         } else if (user.role === 'Employee') {
-          this.router.navigate(['/my-progress']); // Employee Roadmap
+          this.router.navigate(['/progress']); // Employee Roadmap
         } else {
           this.router.navigate(['/']); // Fallback
         }

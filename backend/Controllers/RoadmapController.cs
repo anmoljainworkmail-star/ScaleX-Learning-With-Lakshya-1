@@ -32,9 +32,11 @@ namespace RoadmapGenerator.API.Controllers
             var prompt = $@"
 You are an expert curriculum designer.
 Create a step-by-step learning roadmap for the following topic: '{request.Query}'.
-Return the response strictly as a JSON array of strings, where each string is a topic title.
-Do not include any markdown formatting (like ```json), just the raw JSON array.
-Example output: [""Introduction to Basics"", ""Advanced Concepts"", ""Project Work""]
+Return the response strictly as a JSON object with the following matching properties:
+- ""title"": A catchy, professional title for this roadmap (e.g. ""Mastering Angular"", ""Python Zero to Hero"").
+- ""topics"": An array of strings, where each string is a topic title.
+
+Do not include any markdown formatting (like ```json), just the raw JSON object.
 ";
 
             try 
@@ -47,8 +49,8 @@ Example output: [""Introduction to Basics"", ""Advanced Concepts"", ""Project Wo
                     content = content.Replace("```json", "").Replace("```", "").Trim();
                 }
 
-                var topics = JsonSerializer.Deserialize<List<string>>(content);
-                return Ok(new RoadmapResponse { Topics = topics ?? new List<string>() });
+                var response = JsonSerializer.Deserialize<RoadmapResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -100,7 +102,7 @@ Do not include any markdown formatting.
 
             var roadmap = new Roadmap 
             { 
-               Title = "Generated Roadmap", // In real app, ask user for title or derive from query
+               Title = !string.IsNullOrWhiteSpace(request.Title) ? request.Title : "Generated Roadmap",
                Topics = request.Topics.Select((t, i) => new Topic { Content = t, OrderIndex = i }).ToList()
             };
 
@@ -154,10 +156,60 @@ Do not include any markdown formatting.
 
             return Ok(roadmaps);
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAll()
+        {
+            var roadmaps = await _context.Roadmaps
+                .Include(r => r.Topics)
+                .Include(r => r.AssignedToUser)
+                .ToListAsync();
+
+            foreach (var roadmap in roadmaps)
+            {
+                roadmap.Topics = roadmap.Topics.OrderBy(t => t.OrderIndex).ToList();
+            }
+
+            return Ok(roadmaps);
+        }
+        [HttpPut("{roadmapId}/topic/{topicId}/complete")]
+        public async Task<IActionResult> UpdateTopicCompletion(Guid roadmapId, Guid topicId, [FromBody] UpdateTopicCompletionRequest request)
+        {
+            var roadmap = await _context.Roadmaps.Include(r => r.Topics).FirstOrDefaultAsync(r => r.Id == roadmapId);
+            if (roadmap == null) return NotFound("Roadmap not found");
+
+            var targetTopic = roadmap.Topics.FirstOrDefault(t => t.Id == topicId);
+            if (targetTopic == null) return NotFound("Topic not found");
+
+            if (request.IsCompleted)
+            {
+                // Mark this and all previous topics as completed
+                foreach (var t in roadmap.Topics.Where(t => t.OrderIndex <= targetTopic.OrderIndex))
+                {
+                    t.IsCompleted = true;
+                }
+            }
+            else
+            {
+                // Mark this and all subsequent topics as incomplete - enforcing sequentiality
+                foreach (var t in roadmap.Topics.Where(t => t.OrderIndex >= targetTopic.OrderIndex))
+                {
+                    t.IsCompleted = false;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Topic completion updated" });
+        }
     }
 
     public class AssignRoadmapRequest
     {
         public int? UserId { get; set; }
+    }
+
+    public class UpdateTopicCompletionRequest
+    {
+        public bool IsCompleted { get; set; }
     }
 }

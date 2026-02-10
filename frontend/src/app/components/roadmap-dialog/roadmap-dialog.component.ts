@@ -150,7 +150,7 @@ export class RoadmapDialogComponent {
 
   save() {
     this.loading = true;
-    this.roadmapService.save(this.topics).subscribe({
+    this.roadmapService.save(this.data.originalQuery, this.topics).subscribe({
       next: (res) => {
         this.loading = false;
         this.dialogRef.close();

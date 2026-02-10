@@ -7,7 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { RoadmapService } from '../../services/roadmap.service';
 import { AuthService } from '../../services/auth.service';
 
@@ -22,13 +22,19 @@ import { AuthService } from '../../services/auth.service';
     MatFormFieldModule,
     MatProgressSpinnerModule,
     MatIconModule,
-    DragDropModule
+    DragDropModule,
+    RouterModule
   ],
   template: `
     <div class="min-h-screen bg-gray-900 flex flex-col items-center justify-start p-4 relative overflow-y-auto">
-      <button mat-flat-button (click)="logout()" class="absolute top-4 right-4 !bg-red-600 !text-white hover:!bg-red-700 transition-colors z-10">
-        Logout
-      </button>
+      <div class="absolute top-4 right-4 z-10 flex gap-2">
+          <button *ngIf="isManager" mat-flat-button [routerLink]="['/progress']" class="!bg-indigo-600 !text-white hover:!bg-indigo-700 transition-colors">
+            All Roadmaps
+          </button>
+          <button mat-flat-button (click)="logout()" class="!bg-red-600 !text-white hover:!bg-red-700 transition-colors">
+            Logout
+          </button>
+      </div>
 
       <div class="max-w-4xl w-full text-center space-y-8 mt-10">
         <div *ngIf="!isGenerated" class="space-y-8 transition-all duration-500">
@@ -65,7 +71,7 @@ import { AuthService } from '../../services/auth.service';
         <div *ngIf="isGenerated" class="bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-700 text-left animate-fade-in-up">
             <div class="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
                 <div>
-                    <h2 class="text-2xl font-bold text-white mb-1">Your Roadmap: {{ query }}</h2>
+                    <h2 class="text-2xl font-bold text-white mb-1">{{ title }}</h2>
                     <p class="text-gray-400 text-sm">Drag to reorder, click text to edit</p>
                 </div>
                 <button mat-flat-button color="accent" class="!bg-green-600 !text-white" (click)="save()">
@@ -156,11 +162,16 @@ export class LandingPageComponent {
   loading = false;
   isGenerated = false;
   topics: string[] = [];
+  title = '';
   refineInstruction = '';
 
   private roadmapService = inject(RoadmapService);
   private authService = inject(AuthService);
   private router = inject(Router);
+
+  get isManager(): boolean {
+    return this.authService.currentUserValue?.role === 'Manager';
+  }
 
   generate() {
     if (!this.query.trim()) return;
@@ -170,6 +181,7 @@ export class LandingPageComponent {
       next: (res) => {
         this.loading = false;
         this.topics = res.topics;
+        this.title = res.title;
         this.isGenerated = true;
       },
       error: (err) => {
@@ -208,7 +220,7 @@ export class LandingPageComponent {
 
   save() {
     this.loading = true;
-    this.roadmapService.save(this.topics).subscribe({
+    this.roadmapService.save(this.title, this.topics).subscribe({
       next: (res) => {
         this.loading = false;
         this.router.navigate(['/roadmap', res.id]);
@@ -231,3 +243,4 @@ export class LandingPageComponent {
     this.authService.logout();
   }
 }
+

@@ -22,12 +22,16 @@ export class RoadmapService {
         return this.http.post<RoadmapResponse>(`${this.apiUrl}/refine`, request);
     }
 
-    save(topics: string[]): Observable<any> {
-        return this.http.post<any>(`${this.apiUrl}`, { topics });
+    save(title: string, topics: string[]): Observable<any> {
+        return this.http.post<any>(`${this.apiUrl}`, { title, topics });
     }
 
     get(id: string): Observable<Roadmap> {
         return this.http.get<Roadmap>(`${this.apiUrl}/${id}`);
+    }
+
+    getAll(): Observable<Roadmap[]> {
+        return this.http.get<Roadmap[]>(`${this.apiUrl}`);
     }
 
     assignRoadmap(roadmapId: string, userId: number | null): Observable<any> {
@@ -36,5 +40,9 @@ export class RoadmapService {
 
     getAssignedRoadmaps(userId: number): Observable<Roadmap[]> {
         return this.http.get<Roadmap[]>(`${this.apiUrl}/assigned/${userId}`);
+    }
+
+    updateTopicCompletion(roadmapId: string, topicId: string, isCompleted: boolean): Observable<any> {
+        return this.http.put<any>(`${this.apiUrl}/${roadmapId}/topic/${topicId}/complete`, { isCompleted });
     }
 }
