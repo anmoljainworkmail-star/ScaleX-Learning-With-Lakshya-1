@@ -154,10 +154,59 @@ Do not include any markdown formatting.
 
             return Ok(roadmaps);
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAll()
+        {
+            var roadmaps = await _context.Roadmaps
+                .Include(r => r.Topics)
+                .ToListAsync();
+
+            foreach (var roadmap in roadmaps)
+            {
+                roadmap.Topics = roadmap.Topics.OrderBy(t => t.OrderIndex).ToList();
+            }
+
+            return Ok(roadmaps);
+        }
+        [HttpPut("{roadmapId}/topic/{topicId}/complete")]
+        public async Task<IActionResult> UpdateTopicCompletion(Guid roadmapId, Guid topicId, [FromBody] UpdateTopicCompletionRequest request)
+        {
+            var roadmap = await _context.Roadmaps.Include(r => r.Topics).FirstOrDefaultAsync(r => r.Id == roadmapId);
+            if (roadmap == null) return NotFound("Roadmap not found");
+
+            var targetTopic = roadmap.Topics.FirstOrDefault(t => t.Id == topicId);
+            if (targetTopic == null) return NotFound("Topic not found");
+
+            if (request.IsCompleted)
+            {
+                // Mark this and all previous topics as completed
+                foreach (var t in roadmap.Topics.Where(t => t.OrderIndex <= targetTopic.OrderIndex))
+                {
+                    t.IsCompleted = true;
+                }
+            }
+            else
+            {
+                // Mark this and all subsequent topics as incomplete - enforcing sequentiality
+                foreach (var t in roadmap.Topics.Where(t => t.OrderIndex >= targetTopic.OrderIndex))
+                {
+                    t.IsCompleted = false;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Topic completion updated" });
+        }
     }
 
     public class AssignRoadmapRequest
     {
         public int? UserId { get; set; }
+    }
+
+    public class UpdateTopicCompletionRequest
+    {
+        public bool IsCompleted { get; set; }
     }
 }

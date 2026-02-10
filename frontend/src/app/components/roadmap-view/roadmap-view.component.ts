@@ -10,16 +10,17 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { FormsModule } from '@angular/forms';
-import { Roadmap, User } from '../../models/roadmap-types';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { Roadmap, User, Topic } from '../../models/roadmap-types';
 
 @Component({
     selector: 'app-roadmap-view',
     standalone: true,
-    imports: [CommonModule, RouterModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatSelectModule, MatFormFieldModule, FormsModule],
+    imports: [CommonModule, RouterModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatSelectModule, MatFormFieldModule, FormsModule, MatCheckboxModule],
     template: `
     <div class="min-h-screen bg-gray-900 text-white p-8">
       <div class="max-w-4xl mx-auto">
-        <button mat-button color="primary" routerLink="/" class="mb-6">
+        <button *ngIf="isManager" mat-button color="primary" routerLink="/generate-roadmap" class="mb-6">
             <mat-icon>arrow_back</mat-icon> Create New
         </button>
 
@@ -35,8 +36,19 @@ import { Roadmap, User } from '../../models/roadmap-types';
                 <p class="text-gray-400 mt-2">Created on {{ roadmap.createdAt | date:'mediumDate' }}</p>
             </div>
 
-            <!-- Assignment Section -->
+            <!-- Progress Section -->
             <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 mb-6">
+                <div class="flex justify-between text-sm mb-2 text-gray-400">
+                    <span>Progress</span>
+                    <span>{{ progress }}%</span>
+                </div>
+                <div class="h-3 bg-gray-700 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-blue-500 to-green-400 transition-all duration-500" [style.width.%]="progress"></div>
+                </div>
+            </div>
+
+            <!-- Assignment Section (Managers Only) -->
+            <div *ngIf="isManager" class="bg-gray-800 p-6 rounded-xl border border-gray-700 mb-6">
                 <h3 class="text-lg font-semibold mb-4">Assign to Employee</h3>
                 <div class="flex gap-4 items-center">
                     <mat-form-field appearance="outline" class="flex-1">
@@ -62,11 +74,26 @@ import { Roadmap, User } from '../../models/roadmap-types';
 
             <div class="space-y-4 relative pl-8 border-l-2 border-gray-700 ml-4">
                 <div *ngFor="let topic of roadmap.topics; let last = last" class="relative">
-                    <!-- Timeline dot -->
-                    <div class="absolute -left-[41px] top-1 w-5 h-5 rounded-full bg-blue-600 border-4 border-gray-900 shadow-lg"></div>
+                    <!-- Timeline Checkbox -->
+                    <div class="absolute -left-[50px] top-4 bg-gray-900 rounded-full z-10">
+                        <div *ngIf="isEmployee">
+                            <mat-checkbox [checked]="topic.isCompleted" 
+                                      [disabled]="!isEmployee"
+                                      (change)="toggleTopic(topic, $event)" 
+                                      color="primary">
+                        </mat-checkbox>
+                        </div>
+                        <div *ngIf="isManager" >
+                            <div *ngIf="!topic.isCompleted" class="w-6 h-6 rounded-full bg-red-300"></div>
+                            <div *ngIf="topic.isCompleted" class="w-6 h-6 rounded-full bg-green-300"></div>
+                        </div>
+                    </div>
                     
-                    <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-sm hover:border-blue-500 transition-colors">
-                        <h3 class="text-xl font-medium text-gray-200">{{ topic.content }}</h3>
+                    <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-sm transition-all duration-300"
+                         [ngClass]="{'border-green-500 bg-gray-800/80': topic.isCompleted, 'hover:border-blue-500': !topic.isCompleted}">
+                        <h3 class="text-xl font-medium" [ngClass]="{'text-green-400 line-through decoration-green-500/50': topic.isCompleted, 'text-gray-200': !topic.isCompleted}">
+                            {{ topic.content }}
+                        </h3>
                     </div>
                 </div>
             </div>
@@ -87,12 +114,21 @@ import { Roadmap, User } from '../../models/roadmap-types';
     ::ng-deep .mat-mdc-select-value {
       color: white;
     }
+    /* Customize checkbox to fit dark theme better if needed */
+    ::ng-deep .mat-mdc-checkbox .mdc-checkbox .mdc-checkbox__background {
+        border-color: #6b7280 !important; 
+    }
+    ::ng-deep .mat-mdc-checkbox.mat-primary.mat-mdc-checkbox-checked .mdc-checkbox .mdc-checkbox__background {
+        background-color: #22c55e !important;
+        border-color: #22c55e !important;
+    }
   `]
 })
 export class RoadmapViewComponent implements OnInit {
     roadmap: Roadmap | null = null;
     employees: User[] = [];
     selectedEmployeeId: number | null = null;
+    currentUser: User | null = null;
     loading = true;
     error = '';
     assigning = false;
@@ -103,34 +139,58 @@ export class RoadmapViewComponent implements OnInit {
     private roadmapService = inject(RoadmapService);
     private authService = inject(AuthService);
 
+    get progress(): number {
+        if (!this.roadmap || !this.roadmap.topics || this.roadmap.topics.length === 0) return 0;
+        const completedCount = this.roadmap.topics.filter(t => t.isCompleted).length;
+        return Math.round((completedCount / this.roadmap.topics.length) * 100);
+    }
+
+    get isManager(): boolean {
+        return this.currentUser?.role === 'Manager';
+    }
+
+    get isEmployee(): boolean {
+        return this.currentUser?.role === 'Employee';
+    }
+
     ngOnInit() {
+        this.currentUser = this.authService.currentUserValue;
+        
         const id = this.route.snapshot.paramMap.get('id');
         if (id) {
-            this.roadmapService.get(id).subscribe({
-                next: (res) => {
-                    this.roadmap = res;
-                    this.selectedEmployeeId = res.assignedToUserId || null;
-                    this.loading = false;
-                },
-                error: (err) => {
-                    this.error = 'Roadmap not found.';
-                    this.loading = false;
-                }
-            });
-
-            // Fetch employees
-            this.authService.getEmployees().subscribe({
-                next: (employees) => {
-                    this.employees = employees;
-                },
-                error: (err) => {
-                    console.error('Failed to load employees', err);
-                }
-            });
+            this.loadRoadmap(id);
+            if (this.isManager) {
+                this.loadEmployees();
+            }
         } else {
             this.error = 'Invalid ID';
             this.loading = false;
         }
+    }
+
+    loadRoadmap(id: string) {
+        this.roadmapService.get(id).subscribe({
+            next: (res) => {
+                this.roadmap = res;
+                this.selectedEmployeeId = res.assignedToUserId || null;
+                this.loading = false;
+            },
+            error: (err) => {
+                this.error = 'Roadmap not found.';
+                this.loading = false;
+            }
+        });
+    }
+
+    loadEmployees() {
+        this.authService.getEmployees().subscribe({
+            next: (employees) => {
+                this.employees = employees;
+            },
+            error: (err) => {
+                console.error('Failed to load employees', err);
+            }
+        });
     }
 
     assignRoadmap() {
@@ -153,6 +213,31 @@ export class RoadmapViewComponent implements OnInit {
                 this.assigning = false;
                 this.assignmentError = 'Failed to assign roadmap. Please try again.';
                 console.error(err);
+            }
+        });
+    }
+
+    toggleTopic(topic: Topic, event: any) {
+        if (!this.roadmap) return;
+        
+        const isCompleted = event.checked;
+        const targetIndex = topic.orderIndex;
+
+        // Optimistic UI update
+        // We need to create a new array or update existing one to trigger change detection if needed, 
+        // simplifies logic to just iterate.
+        this.roadmap.topics.forEach(t => {
+            if (isCompleted) {
+                if (t.orderIndex <= targetIndex) t.isCompleted = true;
+            } else {
+                if (t.orderIndex >= targetIndex) t.isCompleted = false;
+            }
+        });
+
+        this.roadmapService.updateTopicCompletion(this.roadmap.id, topic.id, isCompleted).subscribe({
+            error: (err) => {
+                console.error('Failed to update topic completion', err);
+                // Ideally revert validation here, but keeping simple for now
             }
         });
     }

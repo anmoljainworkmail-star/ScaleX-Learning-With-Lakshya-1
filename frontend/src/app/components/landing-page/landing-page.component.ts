@@ -7,7 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { RoadmapService } from '../../services/roadmap.service';
 import { AuthService } from '../../services/auth.service';
 
@@ -22,13 +22,19 @@ import { AuthService } from '../../services/auth.service';
     MatFormFieldModule,
     MatProgressSpinnerModule,
     MatIconModule,
-    DragDropModule
+    DragDropModule,
+    RouterModule
   ],
   template: `
     <div class="min-h-screen bg-gray-900 flex flex-col items-center justify-start p-4 relative overflow-y-auto">
-      <button mat-flat-button (click)="logout()" class="absolute top-4 right-4 !bg-red-600 !text-white hover:!bg-red-700 transition-colors z-10">
-        Logout
-      </button>
+      <div class="absolute top-4 right-4 z-10 flex gap-2">
+          <button *ngIf="isManager" mat-flat-button [routerLink]="['/progress']" class="!bg-indigo-600 !text-white hover:!bg-indigo-700 transition-colors">
+            All Roadmaps
+          </button>
+          <button mat-flat-button (click)="logout()" class="!bg-red-600 !text-white hover:!bg-red-700 transition-colors">
+            Logout
+          </button>
+      </div>
 
       <div class="max-w-4xl w-full text-center space-y-8 mt-10">
         <div *ngIf="!isGenerated" class="space-y-8 transition-all duration-500">
@@ -162,6 +168,10 @@ export class LandingPageComponent {
   private authService = inject(AuthService);
   private router = inject(Router);
 
+  get isManager(): boolean {
+    return this.authService.currentUserValue?.role === 'Manager';
+  }
+
   generate() {
     if (!this.query.trim()) return;
 
@@ -231,3 +241,4 @@ export class LandingPageComponent {
     this.authService.logout();
   }
 }
+

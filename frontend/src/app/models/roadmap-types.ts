@@ -15,6 +15,7 @@ export interface RoadmapResponse {
 export interface User {
     id: number;
     email: string;
+    role: string;
 }
 
 export interface Topic {
@@ -22,6 +23,7 @@ export interface Topic {
     roadmapId: string;
     content: string;
     orderIndex: number;
+    isCompleted: boolean;
 }
 
 export interface Roadmap {

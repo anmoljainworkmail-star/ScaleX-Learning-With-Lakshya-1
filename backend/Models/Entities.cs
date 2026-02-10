@@ -18,5 +18,6 @@ namespace RoadmapGenerator.API.Models
         public Guid RoadmapId { get; set; }
         public string Content { get; set; } = string.Empty;
         public int OrderIndex { get; set; }
+        public bool IsCompleted { get; set; }
     }
 }
